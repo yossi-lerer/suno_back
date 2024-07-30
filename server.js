@@ -9,10 +9,20 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 4000;
-const host = process.env.HOST
+const host = process.env.HOST;
+const apiKey = process.env.API_KEY
 
 app.use(cookieParser());
 app.use(express.json());
+
+// Middleware to check API key
+const checkApiKey = (req, res, next) => {
+  const requestApiKey = req.headers['x-api-key'];
+  if (!requestApiKey || requestApiKey !== apiKey) {
+    return res.status(403).json({ error: 'Forbidden: Invalid API Key' });
+  }
+  next();
+};
 
 // Function to write the cookie to the .env file
 const writeCookieToEnv = (cookie) => {
@@ -36,9 +46,9 @@ const writeCookieToEnv = (cookie) => {
 }
 
 // Route to receive the cookie and save it to the .env file
-app.post('/send-cookie', (req, res) => {
+app.post('/send-cookie', checkApiKey, (req, res) => {
   const { cookie } = req.body;
-console.log(cookie)
+  console.log(cookie);
   if (!cookie) {
     return res.status(400).json({ error: 'Cookie is required' });
   }
@@ -50,17 +60,6 @@ console.log(cookie)
   } catch (error) {
     res.status(500).json({ error: 'Failed to store cookie' });
   }
-});
-
-// Route to get the cookie from the .env file
-app.get('/get-cookie', (req, res) => {
-  const sunoCookie = process.env.SUNO_COOKIE;
-
-  if (!sunoCookie) {
-    return res.status(500).json({ error: 'Suno cookie not found' });
-  }
-
-  res.json({ cookie: sunoCookie });
 });
 
 // Default route
