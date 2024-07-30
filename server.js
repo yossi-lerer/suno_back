@@ -3,24 +3,17 @@ const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
-const jwt = require('jsonwebtoken');
+
+// Load environment variables from .env file
 dotenv.config();
+
 const app = express();
-
 const port = process.env.PORT || 4000;
-const host = process.env.HOST || '0.0.0.0'; // הגדרת כתובת ברירת מחדל אם אינה מוגדרת ב-.env
-const apiKey = process.env.API_KEY;
-
-const users = [
-  {
-    username: process.env.USER_NAME,
-    password: process.env.PASSWORD,
-  }
-];
-const JWT_SECRET = 'your_secret_key';
+const host = process.env.HOST;
+const apiKey = process.env.API_KEY
 
 app.use(cookieParser());
-app.use(express.json()); // הוסף את ה-JSON Parser
+app.use(express.json());
 
 // Middleware to check API key
 const checkApiKey = (req, res, next) => {
@@ -30,18 +23,6 @@ const checkApiKey = (req, res, next) => {
   }
   next();
 };
-
-app.post('/login', (req, res) => {
-  const username = req.body.username;
-  const password = req.body.password;
-  const user = users.find(u => u.username === username && u.password === password);
-  if (user) {
-    const token = jwt.sign({ username: user.username }, JWT_SECRET); // הסרת role שאינו מוגדר ב-user
-    res.json({ token });
-  } else {
-    res.status(401).json({ error: 'Invalid username or password' });
-  }
-});
 
 // Function to write the cookie to the .env file
 const writeCookieToEnv = (cookie) => {
@@ -65,7 +46,7 @@ const writeCookieToEnv = (cookie) => {
 }
 
 // Route to receive the cookie and save it to the .env file
-app.post('/send-cookie', authenticateToken, (req, res) => {
+app.post('/send-cookie', checkApiKey, (req, res) => {
   const { cookie } = req.body;
   console.log(cookie);
   if (!cookie) {
@@ -82,21 +63,9 @@ app.post('/send-cookie', authenticateToken, (req, res) => {
 });
 
 // Default route
-app.get('/', authenticateToken, (req, res) => {
+app.get('/', (req, res) => {
   res.send('SunoApi Cookie Provider');
 });
-
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  if (token == null) return res.sendStatus(401);
-
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.sendStatus(403);
-    req.user = user;
-    next();
-  });
-}
 
 // Start the server
 app.listen(port, host, () => {
