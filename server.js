@@ -8,9 +8,8 @@ dotenv.config();
 const app = express();
 
 const port = process.env.PORT || 4000;
-const host = process.env.HOST; 
-const apiKey = process.env.API_KEY
-
+const host = process.env.HOST || '0.0.0.0'; // הגדרת כתובת ברירת מחדל אם אינה מוגדרת ב-.env
+const apiKey = process.env.API_KEY;
 
 const users = [
   {
@@ -20,22 +19,8 @@ const users = [
 ];
 const JWT_SECRET = 'your_secret_key';
 
-app.post('/login', (req, res) => {
-  const  username = req.body.username;
-  const  password = req.body.password;
-  const user = users.find(u => u.username === username && u.password === password);
-  if (user) {
-    const token = jwt.sign({ username: user.username, role: user.role }, JWT_SECRET);
-    res.json({ token });
-  } else {
-    res.status(401).json({ error: 'Invalid username or password' });
-  }
-});
-
-
-
 app.use(cookieParser());
-app.use(express.json());
+app.use(express.json()); // הוסף את ה-JSON Parser
 
 // Middleware to check API key
 const checkApiKey = (req, res, next) => {
@@ -45,6 +30,18 @@ const checkApiKey = (req, res, next) => {
   }
   next();
 };
+
+app.post('/login', (req, res) => {
+  const username = req.body.username;
+  const password = req.body.password;
+  const user = users.find(u => u.username === username && u.password === password);
+  if (user) {
+    const token = jwt.sign({ username: user.username }, JWT_SECRET); // הסרת role שאינו מוגדר ב-user
+    res.json({ token });
+  } else {
+    res.status(401).json({ error: 'Invalid username or password' });
+  }
+});
 
 // Function to write the cookie to the .env file
 const writeCookieToEnv = (cookie) => {
